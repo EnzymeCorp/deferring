@@ -54,7 +54,7 @@ module Deferring
     #
     # The delegation has to be explicit in this case, because the inclusion of
     # Enumerable also defines the find-method on DeferredAssociation.
-    def find(*args)
+    def find(*args, &block)
       if block_given?
         objects.find(&block)
       else

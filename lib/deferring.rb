@@ -45,6 +45,8 @@ module Deferring
       has_many(*args, options)
     end
 
+    return if options[:through].present?
+
     generate_deferred_association_methods(
       args.first.to_s,
       listeners,
