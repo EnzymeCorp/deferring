@@ -55,7 +55,11 @@ module Deferring
     # The delegation has to be explicit in this case, because the inclusion of
     # Enumerable also defines the find-method on DeferredAssociation.
     def find(*args)
-      original_association.find(*args)
+      if block_given?
+        objects.find(&block)
+      else
+        original_association.find(*args)
+      end
     end
 
     # Delegates Ruby's Enumerable#count method to the original association.

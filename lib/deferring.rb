@@ -14,7 +14,12 @@ module Deferring
     autosave = options.fetch(:autosave, true)
     validate = options.fetch(:validate, true)
 
-    has_and_belongs_to_many(*args, options)
+    if respond_to?(:has_and_belongs_to_many_without_deferred_save)
+      has_and_belongs_to_many_without_deferred_save(*args, options)
+    else
+      has_and_belongs_to_many(*args, options)
+    end
+
     generate_deferred_association_methods(
       args.first.to_s,
       listeners,
@@ -34,7 +39,12 @@ module Deferring
     autosave = options.fetch(:autosave, true)
     validate = options.fetch(:validate, true)
 
-    has_many(*args, options)
+    if respond_to?(:has_many_without_deferred_save)
+      has_many_without_deferred_save(*args, options)
+    else
+      has_many(*args, options)
+    end
+
     generate_deferred_association_methods(
       args.first.to_s,
       listeners,
@@ -139,9 +149,12 @@ module Deferring
     validate                  = options.fetch(:validate, true)
     dependent                 = options[:dependent]
 
-    # Store the original accessor methods of the association.
-    alias_method :"original_#{association_name}", :"#{association_name}"
-    alias_method :"original_#{association_name}=", :"#{association_name}="
+    define_method :"original_#{association_name}" do
+      association(association_name).reader
+    end
+    define_method :"original_#{association_name}=" do |new_content|
+      association(association_name).writer(new_content)
+    end
 
     # Accessor for our own association.
     define_method(deferred_association_name) do
@@ -261,12 +274,15 @@ module Deferring
       # association and store the result.
       deferred_association = send(deferred_association_name)
       if deferred_association.send(:objects_loaded?)
-        send(:"original_#{association_name}").delete(deferred_association.unlinks)
-        unless send(:"original_#{association_name}").push(deferred_association.links)
-          raise ActiveRecord::RecordNotSaved,
-            "Failed to replace #{association_name} because one or more of " \
-            "the new records could not be saved."
-        end
+
+        # relation already saved
+        send(:"original_#{association_name}").reload
+        # send(:"original_#{association_name}").delete(deferred_association.unlinks)
+        # unless send(:"original_#{association_name}").push(deferred_association.links)
+        #   raise ActiveRecord::RecordNotSaved,
+        #     "Failed to replace #{association_name} because one or more of " \
+        #     "the new records could not be saved."
+        # end
       end
 
       # Store the new value of the association into our delegated association.
